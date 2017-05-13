@@ -98,3 +98,92 @@ Don't forget to upload the package on github release page.
 ## Documentation
 
 Update the "quick start" documentation pages with the links to the new packges  
+
+## Debian repository
+
+The Debian repository is handled with `aptly`:
+
+~~~
+apt-get install aptly
+~~~
+
+Here is how the jessie repository has been created:
+
+~~~
+git checkout gh-pages 
+cat <<'EOF' > aptly.conf 
+{
+  "rootDir": "./apt",
+  "downloadConcurrency": 4,
+  "downloadSpeedLimit": 0,
+  "architectures": ["i386","amd64","all"],
+  "dependencyFollowSuggests": false,
+  "dependencyFollowRecommends": false,
+  "dependencyFollowAllVariants": false,
+  "dependencyFollowSource": false,
+  "gpgDisableSign": false,
+  "gpgDisableVerify": false,
+  "downloadSourcePackages": false,
+  "ppaDistributorID": "",
+  "ppaCodename": "",
+  "skipContentsPublishing": false,
+  "S3PublishEndpoints": {},
+  "SwiftPublishEndpoints": {}
+}
+EOF
+
+# create the repo
+aptly repo create -distribution=jessie -comment="PostgreSQL Automatic Failover - Debian 8 repository" -config=aptly.conf jessie-paf
+
+# import the package
+aptly repo add -config=aptly.conf jessie-paf /tmp/resource-agents-paf_2.1.0-1_all.deb
+
+# create a snapshot of the repo
+aptly snapshot create -config=aptly.conf paf-2.1.0 from repo jessie-paf
+
+# publish it to apt/public
+aptly publish snapshot -config=aptly.conf paf-2.1.0
+
+# push it to github
+git add apt/public
+git commit
+git push
+~~~
+
+To use the repository:
+
+~~~
+wget --quiet -O - 'http://pgp.mit.edu/pks/lookup?op=get&search=0xC5619F680828C222' | apt-key add -
+deb http://blog.ioguix.net/PAF/apt/public/ jessie main
+apt-get update
+apt-get install resource-agents-paf
+~~~
+
+Here is how the wheezy repository has been created:
+
+~~~
+git checkout gh-pages
+aptly repo create -distribution=wheezy -comment="PostgreSQL Automatic Failover - Debian 7 repository" -config=aptly.conf wheezy-paf
+aptly repo add -config=aptly.conf wheezy-paf /tmp/resource-agents-paf_1.1.0-1_all.deb
+aptly snapshot create -config=aptly.conf paf-1.1.0 from repo wheezy-paf
+aptly publish snapshot -config=aptly.conf paf-1.1.0
+git add apt/public/
+git ci
+git push
+~~~
+
+To use the repository:
+
+~~~
+wget --quiet -O - 'http://pgp.mit.edu/pks/lookup?op=get&search=0xC5619F680828C222' | apt-key add -
+deb http://blog.ioguix.net/PAF/apt/public/ wheezy main
+apt-get update
+apt-get install resource-agents-paf
+~~~
+
+TODO:
+* create a gpg key for the PAF project
+* create a keyring package
+* how to create/import a new version of the package?
+* how to deal with multiple versions of the package?
+* create repo for other distro
